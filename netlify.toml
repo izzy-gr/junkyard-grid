@@ -1,0 +1,3 @@
+[build]
+  publish = "."              # “. ” means “this folder” (where index.html is)
+  functions = "netlify/functions"  # look for Lambdas in that subfolder

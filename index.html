@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Junkyard Image Grid</title>
+  <style>
+    body { margin: 0; background: #000; font-family: sans-serif; }
+    #mediaGrid { column-count: 3; column-gap: 0; max-width: 1200px; margin: 0 auto; padding: 0; }
+    @media (max-width: 900px) { #mediaGrid { column-count: 2; } }
+    @media (max-width: 600px) { #mediaGrid { column-count: 1; } }
+    .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; }
+    .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
+    #lightboxOverlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.85); z-index: 9999; display: none;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    #lightboxOverlay img, #lightboxOverlay video {
+      max-width: 90vw; max-height: 90vh; object-fit: contain;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4); border-radius: 0 !important;
+    }
+    #lightboxContent { position: relative; max-width: 90vw; max-height: 90vh; }
+    #lightboxClose {
+      position: fixed; top: 20px; right: 20px; font-size: 2rem;
+      color: white; cursor: pointer; z-index: 10000;
+    }
+  </style>
+</head>
+<body>
+  <div id="mediaGrid"></div>
+  <div id="lightboxOverlay">
+    <div id="lightboxClose">&times;</div>
+    <div id="lightboxContent"></div>
+  </div>
+
+  <script>
+    //
+    // NEW: Fetch a fresh Dropbox token from our serverless function
+    //
+    async function getAccessToken() {
+      const resp = await fetch('/.netlify/functions/get_dropbox_token');
+      const { access_token } = await resp.json();
+      return access_token;
+    }
+
+    // FOLDER_PATH stays exactly the same
+    const FOLDER_PATH = "/Junkyard/images";
+
+    //
+    // fetchDropboxMedia now awaits a dynamic token instead of using a hard‑coded one
+    //
+    async function fetchDropboxMedia() {
+      const ACCESS_TOKEN = await getAccessToken();
+
+      const res = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + ACCESS_TOKEN,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ path: FOLDER_PATH })
+      });
+      const data = await res.json();
+      const entries = data.entries.filter(e => e[".tag"] === "file");
+      const mediaGrid = document.getElementById("mediaGrid");
+
+      // Shuffle & limit to 15 as before
+      for (let i = entries.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [entries[i], entries[j]] = [entries[j], entries[i]];
+      }
+      const max = Math.min(entries.length, 15);
+
+      // Same rendering loop you already had
+      for (let i = 0; i < max; i++) {
+        const entry = entries[i];
+        const linkRes = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + ACCESS_TOKEN,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ path: entry.path_lower })
+        });
+        const linkData = await linkRes.json();
+        const fileUrl = linkData.link;
+        const isVideo = fileUrl.match(/\.(mp4|mov)$/i);
+        const mediaElement = document.createElement(isVideo ? "video" : "img");
+        mediaElement.src = fileUrl;
+        if (isVideo) mediaElement.controls = true;
+        mediaElement.alt = entry.name;
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "mediaItem";
+        wrapper.appendChild(mediaElement);
+        mediaGrid.appendChild(wrapper);
+
+        mediaElement.addEventListener("click", () => {
+          const overlay = document.getElementById("lightboxOverlay");
+          const content = document.getElementById("lightboxContent");
+          content.innerHTML = "";
+          const clone = mediaElement.cloneNode(true);
+          if (clone.tagName === "VIDEO") clone.controls = true;
+          content.appendChild(clone);
+          overlay.style.display = "flex";
+        });
+      }
+    }
+
+    // Kick it all off
+    fetchDropboxMedia();
+
+    // Close button unchanged
+    document.getElementById("lightboxClose").onclick = () => {
+      document.getElementById("lightboxOverlay").style.display = "none";
+    };
+
+    // Arrow‑key navigation unchanged
+    document.addEventListener("keydown", (e) => {
+      const overlay = document.getElementById("lightboxOverlay");
+      if (overlay.style.display !== "flex") return;
+      const all = Array.from(document.querySelectorAll(".mediaItem > *"));
+      const current = document.querySelector("#lightboxContent > *");
+      const index = all.findIndex(el => el.src === current.src);
+      if (e.key === "ArrowRight" && index < all.length - 1) all[index + 1].click();
+      if (e.key === "ArrowLeft"  && index > 0)           all[index - 1].click();
+      if (e.key === "Escape")                            overlay.style.display = "none";
+    });
+
+    // Swipe navigation unchanged
+    let startX = null;
+    document.getElementById("lightboxOverlay").addEventListener("touchstart", (e) => {
+      startX = e.changedTouches[0].screenX;
+    });
+    document.getElementById("lightboxOverlay").addEventListener("touchend", (e) => {
+      const deltaX = e.changedTouches[0].screenX - startX;
+      if (Math.abs(deltaX) > 50) {
+        const all = Array.from(document.querySelectorAll(".mediaItem > *"));
+        const current = document.querySelector("#lightboxContent > *");
+        const index = all.findIndex(el => el.src === current.src);
+        if (deltaX < 0 && index < all.length - 1) all[index + 1].click();
+        if (deltaX > 0 && index > 0)           all[index - 1].click();
+      }
+      startX = null;
+    });
+  </script>
+</body>
+</html>

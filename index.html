@@ -6,11 +6,23 @@
   <title>Junkyard Image Grid</title>
   <style>
     body { margin: 0; background: #000; font-family: sans-serif; }
-    #mediaGrid { column-count: 3; column-gap: 0; max-width: 1200px; margin: 0 auto; padding: 0; }
-    @media (max-width: 900px) { #mediaGrid { column-count: 2; } }
-    @media (max-width: 600px) { #mediaGrid { column-count: 1; } }
+   #mediaGrid {
+    display: flex;
+    flex-wrap: wrap;
+    height: 100vh;            /* force the grid to fill exactly the viewport height */
+    align-content: flex-start; /* pack rows tightly at the top */
+    background: black;         /* in case there are 1–2px gaps */
+    margin: 0;
+    padding: 0;
+  }
     .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; }
-    .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
+    .mediaItem img, .mediaItem video {
+    height: var(--cell-height); /* we’ll set this in JS */
+    width: auto;                 /* preserve each image’s natural aspect ratio */
+    object-fit: contain;
+    display: block;
+    cursor: pointer;
+  }
     #lightboxOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0, 0, 0, 0.85); z-index: 9999; display: none;
@@ -54,7 +66,7 @@
       const ACCESS_TOKEN = await getAccessToken();
 
       const res = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
-        method: "POST",
+        method: "POST", 
         headers: {
           Authorization: "Bearer " + ACCESS_TOKEN,
           "Content-Type": "application/json"
@@ -65,15 +77,20 @@
       const entries = data.entries.filter(e => e[".tag"] === "file");
       const mediaGrid = document.getElementById("mediaGrid");
 
-      // Shuffle & limit to 15 as before
+      // Shuffle the array in place
       for (let i = entries.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [entries[i], entries[j]] = [entries[j], entries[i]];
       }
-      const max = Math.min(entries.length, 15);
+      // 4 rows × 12 images, filling exactly 100vh total
 
+      const total = Math.min(entries.length, 12);
+      const rows  = 4;
+      const cellHeight = window.innerHeight / rows;
+      document.documentElement.style.setProperty("--cell-height", `${cellHeight}px`);
+      
       // Same rendering loop you already had
-      for (let i = 0; i < max; i++) {
+      for (let i = 0; i < total; i++) {
         const entry = entries[i];
         const linkRes = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
           method: "POST",

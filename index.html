@@ -114,6 +114,7 @@
 
     // Close button unchanged
     document.getElementById("lightboxClose").onclick = () => {
+        document.getElementById("lightboxOverlay").style.display = "none";
        // tell the parent page we closed the lightbox
       window.parent.postMessage({ type: "CLOSE_LIGHTBOX" }, "*");
     };

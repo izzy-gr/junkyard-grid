@@ -6,23 +6,27 @@
   <title>Junkyard Image Grid</title>
   <style>
     body { margin: 0; background: #000; font-family: sans-serif; }
-   #mediaGrid {
-    display: flex;
-    flex-wrap: wrap;
-    height: 100vh;            /* force the grid to fill exactly the viewport height */
-    align-content: flex-start; /* pack rows tightly at the top */
-    background: black;         /* in case there are 1–2px gaps */
-    margin: 0;
-    padding: 0;
-  }
-    .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; }
-    .mediaItem img, .mediaItem video {
-    height: var(--cell-height); /* we’ll set this in JS */
-    width: auto;                 /* preserve each image’s natural aspect ratio */
-    object-fit: contain;
-    display: block;
-    cursor: pointer;
-  }
+#mediaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  /* this tiny row-height is our “unit” for spans */
+  grid-auto-rows: 4px;
+  gap: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
+}
+.mediaItem {
+  /* will tell JS how many of those 4px rows to span */
+  grid-row-end: span var(--row-span);
+}
+.mediaItem img,
+.mediaItem video {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: pointer;
+}
     #lightboxOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0, 0, 0, 0.85); z-index: 9999; display: none;
@@ -101,17 +105,28 @@
           body: JSON.stringify({ path: entry.path_lower })
         });
         const linkData = await linkRes.json();
-        const fileUrl = linkData.link;
-        const isVideo = fileUrl.match(/\.(mp4|mov)$/i);
-        const mediaElement = document.createElement(isVideo ? "video" : "img");
-        mediaElement.src = fileUrl;
-        if (isVideo) mediaElement.controls = true;
+const isVideo = /\.(mp4|mov)$/i.test(fileUrl);
+const mediaElement = document.createElement(isVideo ? "video" : "img");
+mediaElement.src = fileUrl;
+if (isVideo) mediaElement.controls = true;
         mediaElement.alt = entry.name;
 
-        const wrapper = document.createElement("div");
-        wrapper.className = "mediaItem";
-        wrapper.appendChild(mediaElement);
-        mediaGrid.appendChild(wrapper);
+mediaElement.onload = mediaElement.onloadedmetadata = () => {
+  // 1) how wide is one column?
+  const columnWidth = document.querySelector("#mediaGrid").clientWidth / 3;
+  // 2) what's the image's natural height if scaled to that width?
+  const scaledHeight = mediaElement.naturalHeight / mediaElement.naturalWidth * columnWidth;
+  // 3) how many 4px rows do we need?  (always round up)
+  const rowSpan = Math.ceil(scaledHeight / 4);
+  // 4) set that custom property on the wrapper div:
+  wrapper.style.setProperty("--row-span", rowSpan);
+};
+
+// now wrap it up like before
+const wrapper = document.createElement("div");
+wrapper.className = "mediaItem";
+wrapper.appendChild(mediaElement);
+mediaGrid.appendChild(wrapper);
 
         mediaElement.addEventListener("click", () => {
           const overlay = document.getElementById("lightboxOverlay");

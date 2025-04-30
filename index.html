@@ -105,28 +105,34 @@
           body: JSON.stringify({ path: entry.path_lower })
         });
         const linkData = await linkRes.json();
-const isVideo = /\.(mp4|mov)$/i.test(fileUrl);
-const mediaElement = document.createElement(isVideo ? "video" : "img");
-mediaElement.src = fileUrl;
-if (isVideo) mediaElement.controls = true;
+         const fileUrl = linkData.link;
+// 2) create the right element and set its src
+      const isVideo = /\.(mp4|mov)$/i.test(fileUrl);
+      const mediaElement = document.createElement(isVideo ? "video" : "img");
+      mediaElement.src = fileUrl;
+      if (isVideo) mediaElement.controls = true;
         mediaElement.alt = entry.name;
-
-mediaElement.onload = mediaElement.onloadedmetadata = () => {
-  // 1) how wide is one column?
-  const columnWidth = document.querySelector("#mediaGrid").clientWidth / 3;
-  // 2) what's the image's natural height if scaled to that width?
-  const scaledHeight = mediaElement.naturalHeight / mediaElement.naturalWidth * columnWidth;
-  // 3) how many 4px rows do we need?  (always round up)
-  const rowSpan = Math.ceil(scaledHeight / 4);
-  // 4) set that custom property on the wrapper div:
-  wrapper.style.setProperty("--row-span", rowSpan);
-};
 
 // now wrap it up like before
 const wrapper = document.createElement("div");
 wrapper.className = "mediaItem";
-wrapper.appendChild(mediaElement);
-mediaGrid.appendChild(wrapper);
+
+            // 4) once the image/video metadata arrives, compute how many 4px rows it needs
+      mediaElement.onload = mediaElement.onloadedmetadata = () => {
+        // width of one of our three columns:
+        const columnWidth = document.querySelector("#mediaGrid").clientWidth / 3;
+        // scaled height at that width:
+        const scaledHeight = mediaElement.naturalHeight
+                           / mediaElement.naturalWidth
+                           * columnWidth;
+        // how many 4px “rows”?
+        const rowSpan = Math.ceil(scaledHeight / 4);
+        wrapper.style.setProperty("--row-span", rowSpan);
+      };
+
+          // 5) append into the grid
+      wrapper.appendChild(mediaElement);
+      mediaGrid.appendChild(wrapper);
 
         mediaElement.addEventListener("click", () => {
           const overlay = document.getElementById("lightboxOverlay");

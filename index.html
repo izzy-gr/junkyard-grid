@@ -45,7 +45,7 @@
     }
 
     // FOLDER_PATH stays exactly the same
-    const FOLDER_PATH = "/Junkyard/images";
+    const FOLDER_PATH = "/Junkyard/test";
 
     //
     // fetchDropboxMedia now awaits a dynamic token instead of using a hard‑coded one
@@ -85,11 +85,16 @@
         });
         const linkData = await linkRes.json();
         const fileUrl = linkData.link;
-        const isVideo = fileUrl.match(/\.(mp4|mov)$/i);
+        const isVideo = /\.(mp4|mov)$/i.test(entry.name);
         const mediaElement = document.createElement(isVideo ? "video" : "img");
         mediaElement.src = fileUrl;
-        if (isVideo) mediaElement.controls = true;
-        mediaElement.alt = entry.name;
+if (isVideo) {
+  mediaElement.autoplay    = true;
+  mediaElement.loop        = true;
+  mediaElement.muted       = true;
+  mediaElement.playsInline = true;
+  mediaElement.controls    = false;
+}
 
         const wrapper = document.createElement("div");
         wrapper.className = "mediaItem";

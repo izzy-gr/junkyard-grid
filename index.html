@@ -48,6 +48,7 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   const VIDEO_FOLDER_PATH = "/Junkyard/Videos";
 
   async function fetchDropboxMedia() {
+    const ACCESS_TOKEN = await getAccessToken();
     const mediaGrid = document.getElementById("mediaGrid");
     mediaGrid.innerHTML = ""; // clear any old items
 

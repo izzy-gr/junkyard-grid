@@ -44,50 +44,75 @@
       return access_token;
     }
 
-    // FOLDER_PATH stays exactly the same
-    const FOLDER_PATH = "/Junkyard/images";
+const IMAGE_FOLDER_PATH = "/Junkyard/Images";
+  const VIDEO_FOLDER_PATH = "/Junkyard/Videos";
 
-    //
-    // fetchDropboxMedia now awaits a dynamic token instead of using a hard‑coded one
-    //
-    async function fetchDropboxMedia() {
-      const ACCESS_TOKEN = await getAccessToken();
+  async function fetchDropboxMedia() {
+    const ACCESS_TOKEN = await getAccessToken();
+    const mediaGrid = document.getElementById("mediaGrid");
+    mediaGrid.innerHTML = ""; // clear any old items
 
-      const res = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
+    // 1) fetch & pick 14 random images
+    const imgRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + ACCESS_TOKEN,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ path: IMAGE_FOLDER_PATH })
+    });
+    const imgData    = await imgRes.json();
+    let imageEntries = imgData.entries.filter(e => e[".tag"] === "file");
+
+    // shuffle images
+    for (let i = imageEntries.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
+    }
+    imageEntries = imageEntries.slice(0, 14);
+
+    // 2) fetch & pick 1 random video
+    const vidRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + ACCESS_TOKEN,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ path: VIDEO_FOLDER_PATH })
+    });
+    const vidData    = await vidRes.json();
+    let videoEntries = vidData.entries.filter(e => e[".tag"] === "file");
+
+    // shuffle videos
+    for (let i = videoEntries.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [videoEntries[i], videoEntries[j]] = [videoEntries[j], videoEntries[i]];
+    }
+    const [ videoEntry ] = videoEntries;
+
+    // 3) combine & reshuffle so the single video appears in a random spot
+    const allEntries = [...imageEntries, videoEntry];
+    for (let i = allEntries.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allEntries[i], allEntries[j]] = [allEntries[j], allEntries[i]];
+    }
+
+    // 4) for each of those 15 entries, fetch its link and render
+    for (let entry of allEntries) {
+      const linkRes = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + ACCESS_TOKEN,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ path: FOLDER_PATH })
+        body: JSON.stringify({ path: entry.path_lower })
       });
-      const data = await res.json();
-      const entries = data.entries.filter(e => e[".tag"] === "file");
-      const mediaGrid = document.getElementById("mediaGrid");
-
-      // Shuffle & limit to 15 as before
-      for (let i = entries.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [entries[i], entries[j]] = [entries[j], entries[i]];
-      }
-      const max = Math.min(entries.length, 15);
-
-      // Same rendering loop you already had
-      for (let i = 0; i < max; i++) {
-        const entry = entries[i];
-        const linkRes = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
-          method: "POST",
-          headers: {
-            Authorization: "Bearer " + ACCESS_TOKEN,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ path: entry.path_lower })
-        });
-        const linkData = await linkRes.json();
-        const fileUrl = linkData.link;
+      const { link: fileUrl } = await linkRes.json();
+        
         const isVideo = /\.(mp4|mov)$/i.test(entry.name);
         const mediaElement = document.createElement(isVideo ? "video" : "img");
         mediaElement.src = fileUrl;
+      
 if (isVideo) {
   mediaElement.autoplay    = true;
   mediaElement.loop        = true;
@@ -95,6 +120,7 @@ if (isVideo) {
   mediaElement.playsInline = true;
   mediaElement.controls    = false;
 }
+      mediaElement.alt = entry.name;
 
         const wrapper = document.createElement("div");
         wrapper.className = "mediaItem";
@@ -108,7 +134,6 @@ if (isVideo) {
           const clone = mediaElement.cloneNode(true);
           if (clone.tagName === "VIDEO") clone.controls = true;
           content.appendChild(clone);
-          
          overlay.style.display = "flex";
           
         // tell the parent page we opened the lightbox

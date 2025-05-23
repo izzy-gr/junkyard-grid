@@ -6,9 +6,24 @@
   <title>Junkyard Image Grid</title>
   <style>
     body { margin: 0; background: #000; font-family: sans-serif; }
-    #mediaGrid { column-count: 3; column-gap: 0; max-width: 1200px; margin: 0 auto; padding: 0; }
-    @media (max-width: 900px) { #mediaGrid { column-count: 2; } }
-    @media (max-width: 600px) { #mediaGrid { column-count: 1; } }
+#mediaGrid {
+  column-count: 5;
+  column-gap: 0;
+  max-width: none;        /* optional—let it span full width */
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* tweak at smaller breakpoints if you like */
+@media (max-width: 1200px) {
+  #mediaGrid { column-count: 4; }
+}
+@media (max-width: 900px) {
+  #mediaGrid { column-count: 3; }
+}
+@media (max-width: 600px) {
+  #mediaGrid { column-count: 2; }
+}
     .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; }
     .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
     #lightboxOverlay {

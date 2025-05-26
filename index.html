@@ -84,7 +84,7 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       const j = Math.floor(Math.random() * (i + 1));
       [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
     }
-    imageEntries = imageEntries.slice(0, 9);
+    imageEntries = imageEntries.slice(0, 4);
 
     // 2) fetch & pick 1 random video
     const vidRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {

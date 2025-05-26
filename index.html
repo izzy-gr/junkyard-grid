@@ -138,40 +138,68 @@ if (isVideo) {
 }
       mediaElement.alt = entry.name;
 
+      for (let entry of allEntries) {
         const wrapper = document.createElement("div");
         wrapper.className = "mediaItem";
         wrapper.appendChild(mediaElement);
         mediaGrid.appendChild(wrapper);
+        mediaItems.push(wrapper);     // track order
 
-mediaElement.addEventListener("click", () => {
-  const allItems = document.querySelectorAll(".mediaItem");
-  allItems.forEach(wrapper => {
-    // if this wrapper contains the clicked element, leave it alone
-    if (wrapper.contains(mediaElement)) {
-      wrapper.style.filter = "none";
-      wrapper.style.opacity = "1";
-    } else {
-      // otherwise blur, desaturate, and darken
-      wrapper.style.filter  = "blur(2px) grayscale(100%) brightness(50%)";
-      wrapper.style.opacity = "0.7";
-    }
-  });
-});
-      }
+  mediaEl.addEventListener("click", (e) => {
+        e.stopPropagation();        // prevent the body-click reset
+        currentFocusedIndex = mediaItems.indexOf(wrapper);
+        mediaItems.forEach((w, idx) => {
+          if (idx === currentFocusedIndex) {
+            w.style.filter  = "";
+            w.style.opacity = "1";
+          } else {
+            w.style.filter  = "blur(4px) grayscale(100%) brightness(50%)";
+            w.style.opacity = "0.7";
+          }
+        });
+      });
     }
 
     // Kick it all off
     fetchDropboxMedia();
 
-    document.body.addEventListener("click", e => {
-  // only reset if you didn’t click on a .mediaItem or its children
-  if (!e.target.closest(".mediaItem")) {
-    document.querySelectorAll(".mediaItem").forEach(w => {
+// Create reset function
+  function resetFilters() {
+    mediaItems.forEach(w => {
       w.style.filter  = "";
       w.style.opacity = "";
     });
+    currentFocusedIndex = null;
   }
-});
+
+
+  // click anywhere outside a .mediaItem to reset
+  document.body.addEventListener("click", e => {
+    if (!e.target.closest(".mediaItem")) {
+      resetFilters();
+    }
+  });
+      
+       // keyboard listener (Esc resets; ←→ navigate focus)
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      resetFilters();
+    }
+    else if (currentFocusedIndex !== null) {
+      // go to next
+      if (e.key === "ArrowRight" && currentFocusedIndex < mediaItems.length - 1) {
+        mediaItems[currentFocusedIndex + 1]
+          .querySelector("img,video")
+          .click();
+      }
+      // go to prev
+      if (e.key === "ArrowLeft" && currentFocusedIndex > 0) {
+        mediaItems[currentFocusedIndex - 1]
+          .querySelector("img,video")
+          .click();
+      }
+    }
+  });
 
     // Close button unchanged
   //  document.getElementById("lightboxClose").onclick = () => {

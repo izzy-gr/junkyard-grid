@@ -52,7 +52,7 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
     const mediaGrid = document.getElementById("mediaGrid");
     mediaGrid.innerHTML = ""; // clear any old items
 
-    // 1) fetch & pick 14 random images
+    // 1) fetch & pick 11 random images
     const imgRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
       method: "POST",
       headers: {
@@ -69,7 +69,7 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       const j = Math.floor(Math.random() * (i + 1));
       [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
     }
-    imageEntries = imageEntries.slice(0, 14);
+    imageEntries = imageEntries.slice(0, 11);
 
     // 2) fetch & pick 1 random video
     const vidRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {

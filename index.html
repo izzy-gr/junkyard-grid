@@ -145,7 +145,7 @@ if (isVideo) {
         mediaGrid.appendChild(wrapper);
         mediaItems.push(wrapper);     // track order
 
-  mediaEl.addEventListener("click", (e) => {
+  mediaElement.addEventListener("click", (e) => {
         e.stopPropagation();        // prevent the body-click reset
         currentFocusedIndex = mediaItems.indexOf(wrapper);
         mediaItems.forEach((w, idx) => {

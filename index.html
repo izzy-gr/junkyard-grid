@@ -24,22 +24,23 @@
 @media (max-width: 600px) {
   #mediaGrid { column-count: 2; }
 }
-    .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; }
+    .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; transition: filter 0.3s ease, opacity 0.3s ease;}
     .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
-    #lightboxOverlay {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.85); z-index: 9999; display: none;
-      align-items: center; justify-content: center; padding: 20px;
-    }
-    #lightboxOverlay img, #lightboxOverlay video {
-      max-width: 90vw; max-height: 90vh; object-fit: contain;
-      box-shadow: 0 0 20px rgba(0,0,0,0.4); border-radius: 0 !important;
-    }
-    #lightboxContent { position: relative; max-width: 90vw; max-height: 90vh; }
-    #lightboxClose {
-      position: fixed; top: 20px; right: 20px; font-size: 2rem;
-      color: white; cursor: pointer; z-index: 10000;
-    }
+    
+   // #lightboxOverlay {
+   //   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    //  background: rgba(0, 0, 0, 0.85); z-index: 9999; display: none;
+    //  align-items: center; justify-content: center; padding: 20px;
+   // }
+  //  #lightboxOverlay img, #lightboxOverlay video {
+    //  max-width: 90vw; max-height: 90vh; object-fit: contain;
+    //  box-shadow: 0 0 20px rgba(0,0,0,0.4); border-radius: 0 !important;
+  //  }
+  //  #lightboxContent { position: relative; max-width: 90vw; max-height: 90vh; }
+  //  #lightboxClose {
+  //    position: fixed; top: 20px; right: 20px; font-size: 2rem;
+  //    color: white; cursor: pointer; z-index: 10000;
+  //  }
   </style>
 </head>
 <body>
@@ -142,62 +143,74 @@ if (isVideo) {
         wrapper.appendChild(mediaElement);
         mediaGrid.appendChild(wrapper);
 
-        mediaElement.addEventListener("click", () => {
-          const overlay = document.getElementById("lightboxOverlay");
-          const content = document.getElementById("lightboxContent");
-          content.innerHTML = "";
-          const clone = mediaElement.cloneNode(true);
-          if (clone.tagName === "VIDEO") clone.controls = true;
-          content.appendChild(clone);
-         overlay.style.display = "flex";
-          
-        // tell the parent page we opened the lightbox
-        window.parent.postMessage({ type: "OPEN_LIGHTBOX" }, "*");
-        });
+mediaElement.addEventListener("click", () => {
+  const allItems = document.querySelectorAll(".mediaItem");
+  allItems.forEach(wrapper => {
+    // if this wrapper contains the clicked element, leave it alone
+    if (wrapper.contains(mediaElement)) {
+      wrapper.style.filter = "none";
+      wrapper.style.opacity = "1";
+    } else {
+      // otherwise blur, desaturate, and darken
+      wrapper.style.filter  = "blur(2px) grayscale(100%) brightness(50%)";
+      wrapper.style.opacity = "0.7";
+    }
+  });
+});
       }
     }
 
     // Kick it all off
     fetchDropboxMedia();
 
+    document.body.addEventListener("click", e => {
+  // only reset if you didn’t click on a .mediaItem or its children
+  if (!e.target.closest(".mediaItem")) {
+    document.querySelectorAll(".mediaItem").forEach(w => {
+      w.style.filter  = "";
+      w.style.opacity = "";
+    });
+  }
+});
+
     // Close button unchanged
-    document.getElementById("lightboxClose").onclick = () => {
+  //  document.getElementById("lightboxClose").onclick = () => {
 
       // hide the lightbox (this line must stay)
-        document.getElementById("lightboxOverlay").style.display = "none";
+   //     document.getElementById("lightboxOverlay").style.display = "none";
             
        // tell the parent page we closed the lightbox
-      window.parent.postMessage({ type: "CLOSE_LIGHTBOX" }, "*");
-    };
+  //    window.parent.postMessage({ type: "CLOSE_LIGHTBOX" }, "*");
+  //  };
 
     // Arrow‑key navigation unchanged
-    document.addEventListener("keydown", (e) => {
-      const overlay = document.getElementById("lightboxOverlay");
-      if (overlay.style.display !== "flex") return;
-      const all = Array.from(document.querySelectorAll(".mediaItem > *"));
-      const current = document.querySelector("#lightboxContent > *");
-      const index = all.findIndex(el => el.src === current.src);
-      if (e.key === "ArrowRight" && index < all.length - 1) all[index + 1].click();
-      if (e.key === "ArrowLeft"  && index > 0)           all[index - 1].click();
-      if (e.key === "Escape")                            overlay.style.display = "none";
-    });
+    //document.addEventListener("keydown", (e) => {
+    //  const overlay = document.getElementById("lightboxOverlay");
+   //   if (overlay.style.display !== "flex") return;
+    //  const all = Array.from(document.querySelectorAll(".mediaItem > *"));
+    //  const current = document.querySelector("#lightboxContent > *");
+    //  const index = all.findIndex(el => el.src === current.src);
+    //  if (e.key === "ArrowRight" && index < all.length - 1) all[index + 1].click();
+    //  if (e.key === "ArrowLeft"  && index > 0)           all[index - 1].click();
+    //  if (e.key === "Escape")                            overlay.style.display = "none";
+  //  });
 
     // Swipe navigation unchanged
-    let startX = null;
-    document.getElementById("lightboxOverlay").addEventListener("touchstart", (e) => {
-      startX = e.changedTouches[0].screenX;
-    });
-    document.getElementById("lightboxOverlay").addEventListener("touchend", (e) => {
-      const deltaX = e.changedTouches[0].screenX - startX;
-      if (Math.abs(deltaX) > 50) {
-        const all = Array.from(document.querySelectorAll(".mediaItem > *"));
-        const current = document.querySelector("#lightboxContent > *");
-        const index = all.findIndex(el => el.src === current.src);
-        if (deltaX < 0 && index < all.length - 1) all[index + 1].click();
-        if (deltaX > 0 && index > 0)           all[index - 1].click();
-      }
-      startX = null;
-    });
+ //   let startX = null;
+ //   document.getElementById("lightboxOverlay").addEventListener("touchstart", (e) => {
+ //     startX = e.changedTouches[0].screenX;
+//    });
+//    document.getElementById("lightboxOverlay").addEventListener("touchend", (e) => {
+//      const deltaX = e.changedTouches[0].screenX - startX;
+ //     if (Math.abs(deltaX) > 50) {
+  //      const all = Array.from(document.querySelectorAll(".mediaItem > *"));
+   //     const current = document.querySelector("#lightboxContent > *");
+  //      const index = all.findIndex(el => el.src === current.src);
+    //    if (deltaX < 0 && index < all.length - 1) all[index + 1].click();
+    //    if (deltaX > 0 && index > 0)           all[index - 1].click();
+ //     }
+ //     startX = null;
+ //   });
   </script>
 </body>
 </html>

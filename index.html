@@ -62,15 +62,33 @@
       return access_token;
     }
 
-const IMAGE_FOLDER_PATH = "/Junkyard/Images";
+  const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   const VIDEO_FOLDER_PATH = "/Junkyard/Videos";
+  let mediaItems = [];
+  let currentFocusedIndex = null;
 
+// Define this here, once, at the top level:
+function selectItem(idx) {
+  mediaItems.forEach((w, i) => {
+    if (i === idx) {
+      w.classList.add("selected");
+      w.style.filter  = "";
+      w.style.opacity = "1";
+    } else {
+      w.classList.remove("selected");
+      w.style.filter  = "blur(3px) grayscale(100%) brightness(70%)";
+      w.style.opacity = "0.7";
+    }
+  });
+  currentFocusedIndex = idx;
+}
+    
    async function fetchDropboxMedia() {
     const ACCESS_TOKEN = await getAccessToken();
     const mediaGrid = document.getElementById("mediaGrid");
     mediaGrid.innerHTML = "";
-    mediaItems = [];          // reset our global tracker
-    currentFocusedIndex = null;
+  //  mediaItems = [];          // reset our global tracker
+   // currentFocusedIndex = null;
 
     // 1) load & shuffle images
     const imgRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
@@ -168,23 +186,18 @@ wrapper.addEventListener("mouseleave", () => {
 
       // click handler: blur & mute the rest
       mediaElement.addEventListener("click", e => {
-        e.stopPropagation();
-        currentFocusedIndex = mediaItems.indexOf(wrapper);
+      // if we already have one selected, do nothing here
+      // (allow the event to bubble so the global click-outside resets)
+          if (currentFocusedIndex !== null) {
+                // already have a selection → let the outer click-reset fire
+          return;
+        }
         
-        mediaItems.forEach((w, idx) => {
-          if (idx === currentFocusedIndex) {
-            w.classList.add("selected");       // ← mark it selected
-            w.style.filter  = "";
-            w.style.opacity = "1";
-          } else {
-            w.classList.remove("selected");    // ← remove from others
-            w.style.filter  = "blur(3px) grayscale(100%) brightness(50%)";
-            w.style.opacity = "0.7";
-          }
-        });
-      });
-    }
-  }
+        e.stopPropagation();
+        selectItem(mediaItems.indexOf(wrapper));
+      }); // ← end click handler
+    } // ← end for(..)
+  } // ← end fetchDropboxMedia()
     
   // 3) start it all
   fetchDropboxMedia();
@@ -216,25 +229,19 @@ document.body.addEventListener("click", e => {
 });
 
   // 6) keyboard: Esc to reset, arrows to move focus
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      return resetFilters();
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    return resetFilters();
+  }
+  if (currentFocusedIndex !== null) {
+    if (e.key === "ArrowRight" && currentFocusedIndex < mediaItems.length - 1) {
+      selectItem(currentFocusedIndex + 1);
     }
-
-    if (currentFocusedIndex !== null) {
-      if (e.key === "ArrowRight" && currentFocusedIndex < mediaItems.length - 1) {
-        mediaItems[currentFocusedIndex + 1]
-          .querySelector("img,video")
-          .click();
-      }
-
-      if (e.key === "ArrowLeft" && currentFocusedIndex > 0) {
-        mediaItems[currentFocusedIndex - 1]
-          .querySelector("img,video")
-          .click();
-      }
+    if (e.key === "ArrowLeft" && currentFocusedIndex > 0) {
+      selectItem(currentFocusedIndex - 1);
     }
-  });
+  }
+});
   </script>
 </body>
 </html>

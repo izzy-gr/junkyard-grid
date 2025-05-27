@@ -26,21 +26,6 @@
 }
     .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; transition: filter 0.3s ease, opacity 0.3s ease;}
     .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
-    
-   // #lightboxOverlay {
-   //   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    //  background: rgba(0, 0, 0, 0.85); z-index: 9999; display: none;
-    //  align-items: center; justify-content: center; padding: 20px;
-   // }
-  //  #lightboxOverlay img, #lightboxOverlay video {
-    //  max-width: 90vw; max-height: 90vh; object-fit: contain;
-    //  box-shadow: 0 0 20px rgba(0,0,0,0.4); border-radius: 0 !important;
-  //  }
-  //  #lightboxContent { position: relative; max-width: 90vw; max-height: 90vh; }
-  //  #lightboxClose {
-  //    position: fixed; top: 20px; right: 20px; font-size: 2rem;
-  //    color: white; cursor: pointer; z-index: 10000;
-  //  }
   </style>
 </head>
 <body>
@@ -62,13 +47,16 @@
 
 const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   const VIDEO_FOLDER_PATH = "/Junkyard/Videos";
+   let mediaItems = [];
+    let currentFocusedIndex = null;
+
 
   async function fetchDropboxMedia() {
     const ACCESS_TOKEN = await getAccessToken();
     const mediaGrid = document.getElementById("mediaGrid");
     mediaGrid.innerHTML = ""; // clear any old items
 
-    // 1) fetch & pick 9 random images
+    // 1) fetch & pick 11 random images
     const imgRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
       method: "POST",
       headers: {
@@ -113,7 +101,7 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       [allEntries[i], allEntries[j]] = [allEntries[j], allEntries[i]];
     }
 
-    // 4) for each of those 10 entries, fetch its link and render
+    // 4) for each of those 12 entries, fetch its link and render
     for (let entry of allEntries) {
       const linkRes = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
         method: "POST",
@@ -128,7 +116,9 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
         const isVideo = /\.(mp4|mov)$/i.test(entry.name);
         const mediaElement = document.createElement(isVideo ? "video" : "img");
         mediaElement.src = fileUrl;
+
       
+      //video player details
 if (isVideo) {
   mediaElement.autoplay    = true;
   mediaElement.loop        = true;
@@ -138,16 +128,20 @@ if (isVideo) {
 }
       mediaElement.alt = entry.name;
 
-      for (let entry of allEntries) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "mediaItem";
-        wrapper.appendChild(mediaElement);
-        mediaGrid.appendChild(wrapper);
-        mediaItems.push(wrapper);     // track order
+     for (const entry of allEntries) {
+      // 1) create the wrapper and media element exactly as before
+      const wrapper      = document.createElement("div");
+      wrapper.className  = "mediaItem";
+      const mediaElement = /* your code to make <img> or <video> */;
+      wrapper.appendChild(mediaElement);
+      mediaGrid.appendChild(wrapper);
+      mediaItems.push(wrapper);
 
-  mediaElement.addEventListener("click", (e) => {
-        e.stopPropagation();        // prevent the body-click reset
+      // 2) whenever that element is clicked, blur & mute the rest
+      mediaElement.addEventListener("click", (e) => {
+        e.stopPropagation(); // so the body-click reset doesn’t immediately fire
         currentFocusedIndex = mediaItems.indexOf(wrapper);
+
         mediaItems.forEach((w, idx) => {
           if (idx === currentFocusedIndex) {
             w.style.filter  = "";
@@ -157,13 +151,14 @@ if (isVideo) {
             w.style.opacity = "0.7";
           }
         });
-      });
-    }
+      });  // <-- closes addEventListener(...) properly
+    }    // <-- closes for(...) loop
+  }
 
-    // Kick it all off
-    fetchDropboxMedia();
+  // 3) start it all
+  fetchDropboxMedia();
 
-// Create reset function
+  // 4) helper to reset everything
   function resetFilters() {
     mediaItems.forEach(w => {
       w.style.filter  = "";
@@ -172,27 +167,24 @@ if (isVideo) {
     currentFocusedIndex = null;
   }
 
-
-  // click anywhere outside a .mediaItem to reset
-  document.body.addEventListener("click", e => {
-    if (!e.target.closest(".mediaItem")) {
-      resetFilters();
-    }
+  // 5) reset if you click outside any item
+  document.body.addEventListener("click", (e) => {
+    if (!e.target.closest(".mediaItem")) resetFilters();
   });
-      
-       // keyboard listener (Esc resets; ←→ navigate focus)
-  document.addEventListener("keydown", e => {
+
+  // 6) keyboard: Esc to reset, arrows to move focus
+  document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      resetFilters();
+      return resetFilters();
     }
-    else if (currentFocusedIndex !== null) {
-      // go to next
+
+    if (currentFocusedIndex !== null) {
       if (e.key === "ArrowRight" && currentFocusedIndex < mediaItems.length - 1) {
         mediaItems[currentFocusedIndex + 1]
           .querySelector("img,video")
           .click();
       }
-      // go to prev
+
       if (e.key === "ArrowLeft" && currentFocusedIndex > 0) {
         mediaItems[currentFocusedIndex - 1]
           .querySelector("img,video")
@@ -200,45 +192,6 @@ if (isVideo) {
       }
     }
   });
-
-    // Close button unchanged
-  //  document.getElementById("lightboxClose").onclick = () => {
-
-      // hide the lightbox (this line must stay)
-   //     document.getElementById("lightboxOverlay").style.display = "none";
-            
-       // tell the parent page we closed the lightbox
-  //    window.parent.postMessage({ type: "CLOSE_LIGHTBOX" }, "*");
-  //  };
-
-    // Arrow‑key navigation unchanged
-    //document.addEventListener("keydown", (e) => {
-    //  const overlay = document.getElementById("lightboxOverlay");
-   //   if (overlay.style.display !== "flex") return;
-    //  const all = Array.from(document.querySelectorAll(".mediaItem > *"));
-    //  const current = document.querySelector("#lightboxContent > *");
-    //  const index = all.findIndex(el => el.src === current.src);
-    //  if (e.key === "ArrowRight" && index < all.length - 1) all[index + 1].click();
-    //  if (e.key === "ArrowLeft"  && index > 0)           all[index - 1].click();
-    //  if (e.key === "Escape")                            overlay.style.display = "none";
-  //  });
-
-    // Swipe navigation unchanged
- //   let startX = null;
- //   document.getElementById("lightboxOverlay").addEventListener("touchstart", (e) => {
- //     startX = e.changedTouches[0].screenX;
-//    });
-//    document.getElementById("lightboxOverlay").addEventListener("touchend", (e) => {
-//      const deltaX = e.changedTouches[0].screenX - startX;
- //     if (Math.abs(deltaX) > 50) {
-  //      const all = Array.from(document.querySelectorAll(".mediaItem > *"));
-   //     const current = document.querySelector("#lightboxContent > *");
-  //      const index = all.findIndex(el => el.src === current.src);
-    //    if (deltaX < 0 && index < all.length - 1) all[index + 1].click();
-    //    if (deltaX > 0 && index > 0)           all[index - 1].click();
- //     }
- //     startX = null;
- //   });
   </script>
 </body>
 </html>

@@ -32,15 +32,15 @@
   overflow: hidden;
 }
 
-/* animate the zoom */
-.mediaItem img,
-.mediaItem video {
+/* zoom the selected on hover */
+.mediaItem.selected img,
+.mediaItem.selected video {
   transition: transform 0.3s ease;
 }
 
 /* on hover, scale up 2× */
-.mediaItem:hover img,
-.mediaItem:hover video {
+.mediaItem.selected:hover img,
+.mediaItem.selected:hover video {
   transform: scale(2);
 }
   </style>
@@ -151,6 +151,8 @@ const mediaNode = wrapper.querySelector("img,video");
 
 // 1) on mousemove, compute the hover-point and write it inline
 wrapper.addEventListener("mousemove", e => {
+  if (!wrapper.classList.contains("selected")) return;
+  
   const rect = wrapper.getBoundingClientRect();
   // percentage across and down the wrapper
   const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -160,6 +162,7 @@ wrapper.addEventListener("mousemove", e => {
 
 // 2) on mouseleave, reset back to center
 wrapper.addEventListener("mouseleave", () => {
+  if (!wrapper.classList.contains("selected")) return;
   mediaNode.style.transformOrigin = "50% 50%";
 });
 
@@ -167,11 +170,14 @@ wrapper.addEventListener("mouseleave", () => {
       mediaElement.addEventListener("click", e => {
         e.stopPropagation();
         currentFocusedIndex = mediaItems.indexOf(wrapper);
+        
         mediaItems.forEach((w, idx) => {
           if (idx === currentFocusedIndex) {
+            w.classList.add("selected");       // ← mark it selected
             w.style.filter  = "";
             w.style.opacity = "1";
           } else {
+            w.classList.remove("selected");    // ← remove from others
             w.style.filter  = "blur(4px) grayscale(100%) brightness(50%)";
             w.style.opacity = "0.7";
           }

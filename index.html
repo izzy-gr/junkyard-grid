@@ -166,6 +166,25 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   // 3) start it all
   fetchDropboxMedia();
 
+// after you've built the grid:
+document.querySelectorAll(".mediaItem").forEach(item => {
+  const media = item.querySelector("img,video");
+
+  item.addEventListener("mousemove", e => {
+    // get cursor position relative to the cell
+    const rect = item.getBoundingClientRect();
+    const x = ((e.clientX - rect.left)  / rect.width)  * 100;
+    const y = ((e.clientY - rect.top)   / rect.height) * 100;
+    // set transform-origin so zoom pans toward mouse
+    media.style.transformOrigin = `${x}% ${y}%`;
+  });
+
+  item.addEventListener("mouseleave", () => {
+    // reset back to center when you leave
+    media.style.transformOrigin = "center center";
+  });
+});
+    
   // 4) helper to reset everything
   function resetFilters() {
     mediaItems.forEach(w => {

@@ -6,25 +6,43 @@
   <title>Junkyard Image Grid</title>
   <style>
     body { margin: 0; background: #000; font-family: sans-serif; }
-    #mediaGrid { column-count: 3; column-gap: 0; max-width: 1200px; margin: 0 auto; padding: 0; }
-    @media (max-width: 900px) { #mediaGrid { column-count: 2; } }
-    @media (max-width: 600px) { #mediaGrid { column-count: 1; } }
-    .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; }
+#mediaGrid {
+  column-count: 3;
+  column-gap: 0;
+  max-width: none;        /* optional—let it span full width */
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* tweak at smaller breakpoints if you like */
+@media (max-width: 1200px) {
+  #mediaGrid { column-count: 4; }
+}
+@media (max-width: 900px) {
+  #mediaGrid { column-count: 3; }
+}
+@media (max-width: 600px) {
+  #mediaGrid { column-count: 2; }
+}
+    .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; transition: filter 0.3s ease, opacity 0.3s ease;}
     .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
-    #lightboxOverlay {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.85); z-index: 9999; display: none;
-      align-items: center; justify-content: center; padding: 20px;
-    }
-    #lightboxOverlay img, #lightboxOverlay video {
-      max-width: 90vw; max-height: 90vh; object-fit: contain;
-      box-shadow: 0 0 20px rgba(0,0,0,0.4); border-radius: 0 !important;
-    }
-    #lightboxContent { position: relative; max-width: 90vw; max-height: 90vh; }
-    #lightboxClose {
-      position: fixed; top: 20px; right: 20px; font-size: 2rem;
-      color: white; cursor: pointer; z-index: 10000;
-    }
+
+    /* make sure the wrapper hides overflow */
+.mediaItem {
+  overflow: hidden;
+}
+
+/* zoom the selected on hover */
+.mediaItem.selected img,
+.mediaItem.selected video {
+  transition: transform 0.3s ease;
+}
+
+/* on hover, scale up 2× */
+.mediaItem.selected:hover img,
+.mediaItem.selected:hover video {
+  transform: scale(2);
+}
   </style>
 </head>
 <body>
@@ -47,12 +65,14 @@
 const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   const VIDEO_FOLDER_PATH = "/Junkyard/Videos";
 
-  async function fetchDropboxMedia() {
+   async function fetchDropboxMedia() {
     const ACCESS_TOKEN = await getAccessToken();
     const mediaGrid = document.getElementById("mediaGrid");
-    mediaGrid.innerHTML = ""; // clear any old items
+    mediaGrid.innerHTML = "";
+    mediaItems = [];          // reset our global tracker
+    currentFocusedIndex = null;
 
-    // 1) fetch & pick 11 random images
+    // 1) load & shuffle images
     const imgRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
       method: "POST",
       headers: {
@@ -61,17 +81,15 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       },
       body: JSON.stringify({ path: IMAGE_FOLDER_PATH })
     });
-    const imgData    = await imgRes.json();
-    let imageEntries = imgData.entries.filter(e => e[".tag"] === "file");
-
-    // shuffle images
+    let imageEntries = (await imgRes.json()).entries
+      .filter(e => e[".tag"] === "file");
     for (let i = imageEntries.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
     }
     imageEntries = imageEntries.slice(0, 11);
 
-    // 2) fetch & pick 1 random video
+    // 2) load & shuffle videos
     const vidRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
       method: "POST",
       headers: {
@@ -80,25 +98,24 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       },
       body: JSON.stringify({ path: VIDEO_FOLDER_PATH })
     });
-    const vidData    = await vidRes.json();
-    let videoEntries = vidData.entries.filter(e => e[".tag"] === "file");
-
-    // shuffle videos
+    let videoEntries = (await vidRes.json()).entries
+      .filter(e => e[".tag"] === "file");
     for (let i = videoEntries.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [videoEntries[i], videoEntries[j]] = [videoEntries[j], videoEntries[i]];
     }
-    const [ videoEntry ] = videoEntries;
+    const [videoEntry] = videoEntries;
 
-    // 3) combine & reshuffle so the single video appears in a random spot
+    // 3) mix ’em up
     const allEntries = [...imageEntries, videoEntry];
     for (let i = allEntries.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allEntries[i], allEntries[j]] = [allEntries[j], allEntries[i]];
     }
 
-    // 4) for each of those 15 entries, fetch its link and render
-    for (let entry of allEntries) {
+    // 4) single loop: fetch link, build element, wrap, append, bind
+    for (const entry of allEntries) {
+      // fetch a temp link
       const linkRes = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
         method: "POST",
         headers: {
@@ -108,81 +125,116 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
         body: JSON.stringify({ path: entry.path_lower })
       });
       const { link: fileUrl } = await linkRes.json();
-        
-        const isVideo = /\.(mp4|mov)$/i.test(entry.name);
-        const mediaElement = document.createElement(isVideo ? "video" : "img");
-        mediaElement.src = fileUrl;
-      
-if (isVideo) {
-  mediaElement.autoplay    = true;
-  mediaElement.loop        = true;
-  mediaElement.muted       = true;
-  mediaElement.playsInline = true;
-  mediaElement.controls    = false;
-}
+
+      // create <img> or <video>
+      const isVideo = /\.(mp4|mov)$/i.test(entry.name);
+      const mediaElement = document.createElement(isVideo ? "video" : "img");
+      mediaElement.src = fileUrl;
       mediaElement.alt = entry.name;
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "mediaItem";
-        wrapper.appendChild(mediaElement);
-        mediaGrid.appendChild(wrapper);
-
-        mediaElement.addEventListener("click", () => {
-          const overlay = document.getElementById("lightboxOverlay");
-          const content = document.getElementById("lightboxContent");
-          content.innerHTML = "";
-          const clone = mediaElement.cloneNode(true);
-          if (clone.tagName === "VIDEO") clone.controls = true;
-          content.appendChild(clone);
-         overlay.style.display = "flex";
-          
-        // tell the parent page we opened the lightbox
-        window.parent.postMessage({ type: "OPEN_LIGHTBOX" }, "*");
-        });
+      if (isVideo) {
+        mediaElement.autoplay    = true;
+        mediaElement.loop        = true;
+        mediaElement.muted       = true;
+        mediaElement.playsInline = true;
+        mediaElement.controls    = false;
       }
+
+      // wrap & append
+      const wrapper = document.createElement("div");
+      wrapper.className = "mediaItem";
+      wrapper.appendChild(mediaElement);
+      mediaGrid.appendChild(wrapper);
+      mediaItems.push(wrapper);
+
+      // get the media node inside this wrapper
+const mediaNode = wrapper.querySelector("img,video");
+
+// 1) on mousemove, compute the hover-point and write it inline
+wrapper.addEventListener("mousemove", e => {
+  if (!wrapper.classList.contains("selected")) return;
+  
+  const rect = wrapper.getBoundingClientRect();
+  // percentage across and down the wrapper
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top)  / rect.height) * 100;
+  mediaNode.style.transformOrigin = `${x}% ${y}%`;
+});
+
+// 2) on mouseleave, reset back to center
+wrapper.addEventListener("mouseleave", () => {
+  if (!wrapper.classList.contains("selected")) return;
+  mediaNode.style.transformOrigin = "50% 50%";
+});
+
+      // click handler: blur & mute the rest
+      mediaElement.addEventListener("click", e => {
+        e.stopPropagation();
+        currentFocusedIndex = mediaItems.indexOf(wrapper);
+        
+        mediaItems.forEach((w, idx) => {
+          if (idx === currentFocusedIndex) {
+            w.classList.add("selected");       // ← mark it selected
+            w.style.filter  = "";
+            w.style.opacity = "1";
+          } else {
+            w.classList.remove("selected");    // ← remove from others
+            w.style.filter  = "blur(3px) grayscale(100%) brightness(50%)";
+            w.style.opacity = "0.7";
+          }
+        });
+      });
+    }
+  }
+    
+  // 3) start it all
+  fetchDropboxMedia();
+
+// after you've built the grid:
+//document.querySelectorAll(".mediaItem").forEach(item => {
+ // const media = item.querySelector("img,video");
+
+    
+  // 4) helper to reset everything
+  function resetFilters() {
+    mediaItems.forEach(w => {
+      w.style.filter  = "";
+      w.style.opacity = "";
+    });
+    currentFocusedIndex = null;
+  }
+
+  // 5) reset if you click outside selected item
+document.body.addEventListener("click", e => {
+  // if nothing’s selected, do nothing
+  if (currentFocusedIndex === null) return;
+
+  const selectedWrapper = mediaItems[currentFocusedIndex];
+  // if the click happened anywhere that's not inside the selected wrapper, reset
+  if (!selectedWrapper.contains(e.target)) {
+    resetFilters();
+  }
+});
+
+  // 6) keyboard: Esc to reset, arrows to move focus
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      return resetFilters();
     }
 
-    // Kick it all off
-    fetchDropboxMedia();
-
-    // Close button unchanged
-    document.getElementById("lightboxClose").onclick = () => {
-
-      // hide the lightbox (this line must stay)
-        document.getElementById("lightboxOverlay").style.display = "none";
-            
-       // tell the parent page we closed the lightbox
-      window.parent.postMessage({ type: "CLOSE_LIGHTBOX" }, "*");
-    };
-
-    // Arrow‑key navigation unchanged
-    document.addEventListener("keydown", (e) => {
-      const overlay = document.getElementById("lightboxOverlay");
-      if (overlay.style.display !== "flex") return;
-      const all = Array.from(document.querySelectorAll(".mediaItem > *"));
-      const current = document.querySelector("#lightboxContent > *");
-      const index = all.findIndex(el => el.src === current.src);
-      if (e.key === "ArrowRight" && index < all.length - 1) all[index + 1].click();
-      if (e.key === "ArrowLeft"  && index > 0)           all[index - 1].click();
-      if (e.key === "Escape")                            overlay.style.display = "none";
-    });
-
-    // Swipe navigation unchanged
-    let startX = null;
-    document.getElementById("lightboxOverlay").addEventListener("touchstart", (e) => {
-      startX = e.changedTouches[0].screenX;
-    });
-    document.getElementById("lightboxOverlay").addEventListener("touchend", (e) => {
-      const deltaX = e.changedTouches[0].screenX - startX;
-      if (Math.abs(deltaX) > 50) {
-        const all = Array.from(document.querySelectorAll(".mediaItem > *"));
-        const current = document.querySelector("#lightboxContent > *");
-        const index = all.findIndex(el => el.src === current.src);
-        if (deltaX < 0 && index < all.length - 1) all[index + 1].click();
-        if (deltaX > 0 && index > 0)           all[index - 1].click();
+    if (currentFocusedIndex !== null) {
+      if (e.key === "ArrowRight" && currentFocusedIndex < mediaItems.length - 1) {
+        mediaItems[currentFocusedIndex + 1]
+          .querySelector("img,video")
+          .click();
       }
-      startX = null;
-    });
+
+      if (e.key === "ArrowLeft" && currentFocusedIndex > 0) {
+        mediaItems[currentFocusedIndex - 1]
+          .querySelector("img,video")
+          .click();
+      }
+    }
+  });
   </script>
 </body>
 </html>

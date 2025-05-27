@@ -26,6 +26,23 @@
 }
     .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; transition: filter 0.3s ease, opacity 0.3s ease;}
     .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
+    /* make sure the wrapper hides overflow */
+.mediaItem {
+  overflow: hidden;
+}
+
+/* animate the zoom */
+.mediaItem img,
+.mediaItem video {
+  transition: transform 0.3s ease;
+  transform-origin: center center;
+}
+
+/* on hover, scale up 1.6× */
+.mediaItem:hover img,
+.mediaItem:hover video {
+  transform: scale(1.6);
+}
   </style>
 </head>
 <body>

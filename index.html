@@ -168,6 +168,12 @@ wrapper.addEventListener("mouseleave", () => {
 
       // click handler: blur & mute the rest
       mediaElement.addEventListener("click", e => {
+      // if we already have one selected, do nothing here
+      // (allow the event to bubble so the global click-outside resets)
+          if (currentFocusedIndex !== null) {
+          return;
+        }
+        
         e.stopPropagation();
         currentFocusedIndex = mediaItems.indexOf(wrapper);
         

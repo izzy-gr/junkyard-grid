@@ -195,21 +195,9 @@ wrapper.addEventListener("mouseleave", () => {
         
         e.stopPropagation();
         selectItem(mediaItems.indexOf(wrapper));
-        
-   //     mediaItems.forEach((w, idx) => {
-   //       if (idx === currentFocusedIndex) {
-    //        w.classList.add("selected");       // ← mark it selected
-      //      w.style.filter  = "";
-        //    w.style.opacity = "1";
-          //} else {
-            //w.classList.remove("selected");    // ← remove from others
-     //       w.style.filter  = "blur(3px) grayscale(100%) brightness(70%)";
-         //   w.style.opacity = "0.7";
-          //}
-        });
-      });
-    }
-  }
+      }); // ← end click handler
+    } // ← end for(..)
+  } // ← end fetchDropboxMedia()
     
   // 3) start it all
   fetchDropboxMedia();

@@ -47,16 +47,15 @@
 
 const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   const VIDEO_FOLDER_PATH = "/Junkyard/Videos";
-   let mediaItems = [];
-    let currentFocusedIndex = null;
 
-
-  async function fetchDropboxMedia() {
+   async function fetchDropboxMedia() {
     const ACCESS_TOKEN = await getAccessToken();
     const mediaGrid = document.getElementById("mediaGrid");
-    mediaGrid.innerHTML = ""; // clear any old items
+    mediaGrid.innerHTML = "";
+    mediaItems = [];          // reset our global tracker
+    currentFocusedIndex = null;
 
-    // 1) fetch & pick 11 random images
+    // 1) load & shuffle images
     const imgRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
       method: "POST",
       headers: {
@@ -65,17 +64,15 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       },
       body: JSON.stringify({ path: IMAGE_FOLDER_PATH })
     });
-    const imgData    = await imgRes.json();
-    let imageEntries = imgData.entries.filter(e => e[".tag"] === "file");
-
-    // shuffle images
+    let imageEntries = (await imgRes.json()).entries
+      .filter(e => e[".tag"] === "file");
     for (let i = imageEntries.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
     }
     imageEntries = imageEntries.slice(0, 11);
 
-    // 2) fetch & pick 1 random video
+    // 2) load & shuffle videos
     const vidRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
       method: "POST",
       headers: {
@@ -84,25 +81,24 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       },
       body: JSON.stringify({ path: VIDEO_FOLDER_PATH })
     });
-    const vidData    = await vidRes.json();
-    let videoEntries = vidData.entries.filter(e => e[".tag"] === "file");
-
-    // shuffle videos
+    let videoEntries = (await vidRes.json()).entries
+      .filter(e => e[".tag"] === "file");
     for (let i = videoEntries.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [videoEntries[i], videoEntries[j]] = [videoEntries[j], videoEntries[i]];
     }
-    const [ videoEntry ] = videoEntries;
+    const [videoEntry] = videoEntries;
 
-    // 3) combine & reshuffle so the single video appears in a random spot
+    // 3) mix ’em up
     const allEntries = [...imageEntries, videoEntry];
     for (let i = allEntries.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allEntries[i], allEntries[j]] = [allEntries[j], allEntries[i]];
     }
 
-    // 4) for each of those 12 entries, fetch its link and render
-    for (let entry of allEntries) {
+    // 4) single loop: fetch link, build element, wrap, append, bind
+    for (const entry of allEntries) {
+      // fetch a temp link
       const linkRes = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
         method: "POST",
         headers: {
@@ -112,37 +108,31 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
         body: JSON.stringify({ path: entry.path_lower })
       });
       const { link: fileUrl } = await linkRes.json();
-        
-        const isVideo = /\.(mp4|mov)$/i.test(entry.name);
-        const mediaElement = document.createElement(isVideo ? "video" : "img");
-        mediaElement.src = fileUrl;
 
-      
-      //video player details
-if (isVideo) {
-  mediaElement.autoplay    = true;
-  mediaElement.loop        = true;
-  mediaElement.muted       = true;
-  mediaElement.playsInline = true;
-  mediaElement.controls    = false;
-  }
+      // create <img> or <video>
+      const isVideo = /\.(mp4|mov)$/i.test(entry.name);
+      const mediaElement = document.createElement(isVideo ? "video" : "img");
+      mediaElement.src = fileUrl;
       mediaElement.alt = entry.name;
-    }
+      if (isVideo) {
+        mediaElement.autoplay    = true;
+        mediaElement.loop        = true;
+        mediaElement.muted       = true;
+        mediaElement.playsInline = true;
+        mediaElement.controls    = false;
+      }
 
-     for (const entry of allEntries) {
-      // 1) create the wrapper and media element exactly as before
-      const wrapper      = document.createElement("div");
-      wrapper.className  = "mediaItem";
-      const mediaElement = /* your code to make <img> or <video> */;
+      // wrap & append
+      const wrapper = document.createElement("div");
+      wrapper.className = "mediaItem";
       wrapper.appendChild(mediaElement);
       mediaGrid.appendChild(wrapper);
       mediaItems.push(wrapper);
 
-      // 2) whenever that element is clicked, blur & mute the rest
-      mediaElement.addEventListener("click", (e) => {
-        e.stopPropagation(); // so the body-click reset doesn’t immediately fire
+      // click handler: blur & mute the rest
+      mediaElement.addEventListener("click", e => {
+        e.stopPropagation();
         currentFocusedIndex = mediaItems.indexOf(wrapper);
-
         mediaItems.forEach((w, idx) => {
           if (idx === currentFocusedIndex) {
             w.style.filter  = "";
@@ -152,9 +142,10 @@ if (isVideo) {
             w.style.opacity = "0.7";
           }
         });
-      });  // <-- closes addEventListener(...) properly
-    }    // <-- closes for(...) loop
-
+      });
+    }
+  }
+    
   // 3) start it all
   fetchDropboxMedia();
 

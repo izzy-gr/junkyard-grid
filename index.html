@@ -125,8 +125,9 @@ if (isVideo) {
   mediaElement.muted       = true;
   mediaElement.playsInline = true;
   mediaElement.controls    = false;
-}
+  }
       mediaElement.alt = entry.name;
+    }
 
      for (const entry of allEntries) {
       // 1) create the wrapper and media element exactly as before
@@ -153,7 +154,6 @@ if (isVideo) {
         });
       });  // <-- closes addEventListener(...) properly
     }    // <-- closes for(...) loop
-  }
 
   // 3) start it all
   fetchDropboxMedia();

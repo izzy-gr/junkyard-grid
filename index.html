@@ -26,6 +26,7 @@
 }
     .mediaItem { break-inside: avoid; width: 100%; margin: 0; display: inline-block; transition: filter 0.3s ease, opacity 0.3s ease;}
     .mediaItem img, .mediaItem video { width: 100%; height: auto; display: block; cursor: pointer; }
+
     /* make sure the wrapper hides overflow */
 .mediaItem {
   overflow: hidden;
@@ -145,6 +146,23 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
       mediaGrid.appendChild(wrapper);
       mediaItems.push(wrapper);
 
+      // get the media node inside this wrapper
+const mediaNode = wrapper.querySelector("img,video");
+
+// 1) on mousemove, compute the hover-point and write it inline
+wrapper.addEventListener("mousemove", e => {
+  const rect = wrapper.getBoundingClientRect();
+  // percentage across and down the wrapper
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top)  / rect.height) * 100;
+  mediaNode.style.transformOrigin = `${x}% ${y}%`;
+});
+
+// 2) on mouseleave, reset back to center
+wrapper.addEventListener("mouseleave", () => {
+  mediaNode.style.transformOrigin = "50% 50%";
+});
+
       // click handler: blur & mute the rest
       mediaElement.addEventListener("click", e => {
         e.stopPropagation();
@@ -166,23 +184,9 @@ const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   fetchDropboxMedia();
 
 // after you've built the grid:
-document.querySelectorAll(".mediaItem").forEach(item => {
-  const media = item.querySelector("img,video");
+//document.querySelectorAll(".mediaItem").forEach(item => {
+ // const media = item.querySelector("img,video");
 
-  item.addEventListener("mousemove", e => {
-    // get cursor position relative to the cell
-    const rect = item.getBoundingClientRect();
-    const x = ((e.clientX - rect.left)  / rect.width)  * 100;
-    const y = ((e.clientY - rect.top)   / rect.height) * 100;
-    // set transform-origin so zoom pans toward mouse
-    media.style.transformOrigin = `${x}% ${y}%`;
-  });
-
-  item.addEventListener("mouseleave", () => {
-    // reset back to center when you leave
-    media.style.transformOrigin = "center center";
-  });
-});
     
   // 4) helper to reset everything
   function resetFilters() {

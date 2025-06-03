@@ -46,13 +46,9 @@
     .mediaItem.selected video {
       transition: transform 0.3s ease;
     }
-    /* (You already removed the transform-origin here, because we're doing it in JS.) */
-    /* .mediaItem.selected:hover img,
-       .mediaItem.selected:hover video {
-         transform: scale(2);
-       } */
+    /* (transform‐origin will be handled in JS, so we don’t hardcode it here.) */
 
-    /* New: styling for the “date taken” tooltip */
+    /* Styling for the “date taken” tooltip */
     .mediaDateTooltip {
       position: absolute;
       background: #000000;
@@ -72,8 +68,6 @@
 </head>
 <body>
   <div id="mediaGrid"></div>
-
-  <!-- (Your lightbox HTML can stay here, but we’re no longer using it in JS.) -->
   <div id="lightboxOverlay">
     <div id="lightboxClose">&times;</div>
     <div id="lightboxContent"></div>
@@ -81,7 +75,7 @@
 
   <script>
     /**************************************************************************
-     * 1) Helper: format an ISO‐string into “Mon D, YYYY”. 
+     * 1) Helper: format an ISO string into “Jul 7, 2023” style.
      **************************************************************************/
     function formatDate(isoString) {
       const d = new Date(isoString);
@@ -93,9 +87,8 @@
     }
 
     /**************************************************************************
-     * 2) Spotlight / blur helper (unchanged). 
-     *    We keep track of which thumbnail is spotlit so that clicking again
-     *    will reset everything.
+     * 2) Spotlight / blur helper (unchanged).
+     *    Keeps track of which thumbnail is spotlighted so arrow keys can move it.
      **************************************************************************/
     let currentFocusedIndex = null;
     function selectItem(idx) {
@@ -121,7 +114,7 @@
       });
       currentFocusedIndex = null;
 
-      // Remove any existing date tooltip
+      // Remove any existing “date taken” tooltip
       const oldTip = document.querySelector(".mediaDateTooltip");
       if (oldTip) oldTip.remove();
     }
@@ -136,7 +129,7 @@
     }
 
     /**************************************************************************
-     * 4) Main function: list_folder → pick 9 images + 1 video → render.
+     * 4) Main function: list_folder → pick 9 images + 1 video → render all 10.
      **************************************************************************/
     (async function fetchDropboxMedia() {
       const ACCESS_TOKEN = await getAccessToken();
@@ -146,7 +139,7 @@
       mediaGrid.innerHTML = "";
       let mediaItems = [];
 
-      // 4a) List all images:
+      // 4a) List all images
       const imgRes = await fetch(
         "https://api.dropboxapi.com/2/files/list_folder",
         {
@@ -161,14 +154,14 @@
       const imgData = await imgRes.json();
       let imageEntries = imgData.entries.filter(e => e[".tag"] === "file");
 
-      // 4b) Shuffle images, pick first 9:
+      // 4b) Shuffle images, pick first 9
       for (let i = imageEntries.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
       }
       imageEntries = imageEntries.slice(0, 9);
 
-      // 4c) List all videos:
+      // 4c) List all videos
       const vidRes = await fetch(
         "https://api.dropboxapi.com/2/files/list_folder",
         {
@@ -183,25 +176,25 @@
       const vidData = await vidRes.json();
       let videoEntries = vidData.entries.filter(e => e[".tag"] === "file");
 
-      // 4d) Shuffle videos, pick the first one:
+      // 4d) Shuffle videos, pick the first one
       for (let i = videoEntries.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [videoEntries[i], videoEntries[j]] = [videoEntries[j], videoEntries[i]];
       }
       const [ videoEntry ] = videoEntries;
 
-      // 4e) Combine the 9 images + 1 video into a single array, then reshuffle:
+      // 4e) Combine 9 images + 1 video → reshuffle all 10
       const allEntries = [...imageEntries, videoEntry];
       for (let i = allEntries.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allEntries[i], allEntries[j]] = [allEntries[j], allEntries[i]];
       }
 
-      // 4f) Render each of the 10 chosen entries:
+      // 4f) Render each of the 10 chosen entries
       for (let idx = 0; idx < allEntries.length; idx++) {
         const entry = allEntries[idx];
 
-        // Fetch a temporary link:
+        // Fetch a temporary link for that file
         const linkRes = await fetch(
           "https://api.dropboxapi.com/2/files/get_temporary_link",
           {
@@ -216,7 +209,7 @@
         const linkData = await linkRes.json();
         const fileUrl = linkData.link;
 
-        // Create <img> or <video> depending on the extension:
+        // Create <img> or <video> node
         const isVideo = /\.(mp4|mov)$/i.test(entry.name);
         const mediaElement = document.createElement(isVideo ? "video" : "img");
         mediaElement.src = fileUrl;
@@ -229,14 +222,14 @@
           mediaElement.controls    = false;
         }
 
-        // Wrap & append:
+        // Wrap & append into the grid
         const wrapper = document.createElement("div");
         wrapper.className = "mediaItem";
         mediaGrid.appendChild(wrapper);
         wrapper.appendChild(mediaElement);
         mediaItems.push(wrapper);
 
-        // ── NEW: fetch metadata to pull “time_taken” ──
+        // ── NEW: fetch metadata to get “time_taken” ──
         const metaRes = await fetch(
           "https://api.dropboxapi.com/2/files/get_metadata",
           {
@@ -254,7 +247,6 @@
         );
         const metaData = await metaRes.json();
 
-        // If EXIF “time_taken” exists, use that; otherwise fallback to "Date… idk"
         let dateTaken = "Date\u2026 idk";
         if (
           metaData.media_info &&
@@ -264,68 +256,90 @@
           dateTaken = metaData.media_info.metadata.time_taken;
         }
         wrapper.dataset.dateTaken = dateTaken;
-        // ────────────────────────────────────────────────────────────────
+        // ────────────────────────────────────────────────────
 
-        // Fetch the <img> or <video> node inside this wrapper:
+        // Grab the <img> or <video> child
         const mediaNode = wrapper.querySelector("img,video");
 
-        // 4g) On mousemove inside a selected wrapper → adjust transform‐origin so
-        //     that the zoom (transform: scale(2)) follows the mouse.
+        // 4g) On mousemove inside a spotlighted wrapper, adjust transform‐origin
         wrapper.addEventListener("mousemove", e => {
           if (!wrapper.classList.contains("selected")) return;
           const rect = wrapper.getBoundingClientRect();
           const x = ((e.clientX - rect.left) / rect.width)  * 100;
-          const y = ((e.clientY - rect.top ) / rect.height) * 100;
+          const y = ((e.clientY - rect.top)  / rect.height) * 100;
           mediaNode.style.transformOrigin = `${x}% ${y}%`;
         });
 
-        // 4h) On mouseleave, reset transform‐origin to center:
+        // 4h) On mouseleave, reset transform‐origin to center
         wrapper.addEventListener("mouseleave", () => {
           if (!wrapper.classList.contains("selected")) return;
           mediaNode.style.transformOrigin = "50% 50%";
         });
 
-        // 4i) Click handler: spotlight + show the date tooltip:
+        // 4i) Click handler: spotlight + show “date taken” tooltip
         mediaElement.addEventListener("click", e => {
           e.stopPropagation();
 
-          // If something is already selected, just let the outer click‐reset run:
+          // If one is already spotlit, let the outside‐click reset handle it
           if (currentFocusedIndex !== null) {
             return;
           }
 
-          // Otherwise, spotlight this one:
           selectItem(idx);
 
-          // Decide what to show:
+          // Decide what to display:
           const raw = wrapper.dataset.dateTaken;
           const displayText =
             raw === "Date\u2026 idk"
               ? raw
               : formatDate(raw);
 
-          // Show the little tooltip near the wrapper:
+          // Show the tooltip beside the selected thumbnail
           showDateTooltip(wrapper, displayText);
         });
-
-      } // ← end for(each entry)
-    })(); // ← end fetchDropboxMedia()
+      }
+    })(); // ← Immediately run fetchDropboxMedia()
 
     /**************************************************************************
-     * 5) If you click anywhere outside a .mediaItem, we reset everything:
+     * 5) Reset if you click anywhere outside the currently selected item
      **************************************************************************/
     document.body.addEventListener("click", e => {
-      if (!e.target.closest(".mediaItem")) {
+      if (currentFocusedIndex === null) return;
+      const selectedWrapper = document.querySelectorAll(".mediaItem")[currentFocusedIndex];
+      if (!selectedWrapper.contains(e.target)) {
         resetFilters();
       }
     });
 
     /**************************************************************************
-     * 6) Pressing “Escape” also resets:
+     * 6) Keyboard: Escape resets, Left/Right arrows move the spotlight
      **************************************************************************/
     document.addEventListener("keydown", e => {
       if (e.key === "Escape") {
-        resetFilters();
+        return resetFilters();
+      }
+      if (currentFocusedIndex !== null) {
+        const allWrappers = document.querySelectorAll(".mediaItem");
+        if (e.key === "ArrowRight" && currentFocusedIndex < allWrappers.length - 1) {
+          selectItem(currentFocusedIndex + 1);
+          const nextWrapper = allWrappers[currentFocusedIndex];
+          const raw = nextWrapper.dataset.dateTaken;
+          const displayText =
+            raw === "Date\u2026 idk"
+              ? raw
+              : formatDate(raw);
+          showDateTooltip(nextWrapper, displayText);
+        }
+        if (e.key === "ArrowLeft" && currentFocusedIndex > 0) {
+          selectItem(currentFocusedIndex - 1);
+          const prevWrapper = allWrappers[currentFocusedIndex];
+          const raw = prevWrapper.dataset.dateTaken;
+          const displayText =
+            raw === "Date\u2026 idk"
+              ? raw
+              : formatDate(raw);
+          showDateTooltip(prevWrapper, displayText);
+        }
       }
     });
 
@@ -335,7 +349,7 @@
      *    there’s no room above). We also fade it in via CSS.
      **************************************************************************/
     function showDateTooltip(wrapper, formattedDate) {
-      // 7a) Remove any old tooltip first:
+      // 7a) Remove any old tooltip first
       const oldTip = document.querySelector(".mediaDateTooltip");
       if (oldTip) oldTip.remove();
 
@@ -345,25 +359,25 @@
       tip.textContent = formattedDate;
       document.body.appendChild(tip);
 
-      // 7c) Measure sizes so we can position above/below:
-      const rectTip  = tip.getBoundingClientRect();
+      // 7c) Measure sizes so we can position above/below
+      const rectTip = tip.getBoundingClientRect();
       const rectWrap = wrapper.getBoundingClientRect();
 
       // Try to place above by default:
       let top = rectWrap.top - rectTip.height - 8;
-      // If that would run off‐screen, place below instead:
+      // If that would run off-screen, place below instead:
       if (top < 8) {
         top = rectWrap.bottom + 8;
       }
 
       // Center horizontally (clamped to viewport edges):
-      let left = rectWrap.left + (rectWrap.width - rectTip.width)/2;
+      let left = rectWrap.left + (rectWrap.width - rectTip.width) / 2;
       left = Math.max(8, Math.min(left, window.innerWidth - rectTip.width - 8));
 
       tip.style.top  = `${top}px`;
       tip.style.left = `${left}px`;
 
-      // 7d) Finally fade it in:
+      // 7d) Fade it in
       requestAnimationFrame(() => {
         tip.style.opacity = "1";
       });

@@ -301,15 +301,20 @@
     })(); // ← Immediately run fetchDropboxMedia()
 
     /**************************************************************************
-     * 5) Reset if you click anywhere outside the currently selected item
+     * 5) Reset if you click *anywhere* outside the currently selected item
      **************************************************************************/
-    document.body.addEventListener("click", e => {
-      if (currentFocusedIndex === null) return;
-      const selectedWrapper = document.querySelectorAll(".mediaItem")[currentFocusedIndex];
-      if (!selectedWrapper.contains(e.target)) {
-        resetFilters();
-      }
-    });
+document.addEventListener(
+  "click",
+  (e) => {
+    if (currentFocusedIndex === null) return;
+
+    const selectedWrapper = mediaItems[currentFocusedIndex];
+    if (!selectedWrapper.contains(e.target)) {
+      resetFilters();
+    }
+  },
+  /* ← capture = true */ true
+);
 
     /**************************************************************************
      * 6) Keyboard: Escape resets, Left/Right arrows move the spotlight

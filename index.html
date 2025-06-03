@@ -1,3 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Junkyard Image Grid</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      font-family: sans-serif;
+    }
+
+    #mediaGrid {
+      column-count: 3;
+      column-gap: 0;
+      max-width: none; /* make it span full width */
+      margin: 0 auto;
+      padding: 0;
+    }
+    @media (max-width: 1200px) {
+      #mediaGrid { column-count: 4; }
+    }
+    @media (max-width: 900px) {
+      #mediaGrid { column-count: 3; }
+    }
+    @media (max-width: 600px) {
+      #mediaGrid { column-count: 2; }
+    }
+
+    .mediaItem {
+      break-inside: avoid;
+      width: 100%;
+      margin: 0;
+      display: inline-block;
+      overflow: hidden; /* so the zoom never “leaks” out of its box */
+      transition: filter 0.3s ease, opacity 0.3s ease;
+      position: relative; /* for positioning the tooltip inside it */
+    }
+
+    .mediaItem img,
+    .mediaItem video {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: pointer;
+      transform-origin: 50% 50%;
+      transition: transform 0.3s ease;
+    }
+
+    /* Only the .selected item will zoom on hover: */
+    .mediaItem.selected img,
+    .mediaItem.selected video {
+      /* The actual transform‐origin gets set dynamically in JS */
+    }
+
+    /* The “date taken” tooltip that floats above the spotlit item */
+    .mediaDateTooltip {
+      position: absolute;
+      background: #000000;
+      color: #f4f2ea;
+      padding: 12px;
+      border-radius: 4px;
+      max-width: 30vw;
+      font-size: 16px;
+      line-height: 1.4;
+      opacity: 0;
+      transition: opacity 0.3s ease-in;
+      z-index: 10000;
+      word-wrap: break-word;
+      box-sizing: border-box;
+      pointer-events: none;  /* so clicks “pass through” */
+    }
+  </style>
+</head>
+<body>
+
+  <div id="mediaGrid"></div>
+  <!-- Tooltip container; we’ll move it around in JS -->
+  <div id="dateTooltip" class="mediaDateTooltip"></div>
+
 <script>
   //
   // 1) Fetch a fresh Dropbox token from our Netlify function

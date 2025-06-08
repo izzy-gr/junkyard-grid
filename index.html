@@ -87,7 +87,7 @@
         '*'  // or replace '*' with your Squarespace site’s exact origin
       );
     }
-    reportHeight();
+
   //
   // 1) Fetch a fresh Dropbox token from our Netlify function
   //
@@ -342,7 +342,7 @@
         body: JSON.stringify({ path: entry.path_lower })
       });
       const { link: fileUrl } = await linkRes.json();
-
+reportHeight();  
       // 8.4.2) Create an <img> or <video> node
       const isVideo = /\.(mp4|mov)$/i.test(entry.name);
       const mediaElement = document.createElement(isVideo ? "video" : "img");

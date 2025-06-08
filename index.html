@@ -87,7 +87,7 @@
         '*'  // or replace '*' with your Squarespace site’s exact origin
       );
     }
-    reportHeight();
+
   //
   // 1) Fetch a fresh Dropbox token from our Netlify function
   //
@@ -434,7 +434,7 @@
   // 11) Finally, kick everything off:
   //
   fetchDropboxMedia();
-  
+      reportHeight();
     // fire reportHeight once on load…
     window.addEventListener('load', reportHeight);
     // …and again if anything causes a relayout (e.g. images loading)

@@ -429,12 +429,11 @@
       }
     }
   });
-
+    reportHeight();
   //
   // 11) Finally, kick everything off:
   //
   fetchDropboxMedia();
-      reportHeight();
     // fire reportHeight once on load…
     window.addEventListener('load', reportHeight);
     // …and again if anything causes a relayout (e.g. images loading)

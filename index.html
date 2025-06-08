@@ -426,4 +426,23 @@
   // 11) Finally, kick everything off:
   //
   fetchDropboxMedia();
+
+  
+function reportHeight() {
+  const h = document.getElementById("mediaGrid").getBoundingClientRect().height;
+  // tell the parent page
+  window.parent.postMessage(
+    { type: "GRID_HEIGHT", height: Math.ceil(h) },
+    "https://junkyard-grid.netlify.app"
+  );
+}
+
+// after initial load
+fetchDropboxMedia().then(reportHeight);
+
+// also when the window resizes
+window.addEventListener("resize", () => {
+  // debounce if you like, then:
+  reportHeight();
+});
 </script>

@@ -12,7 +12,7 @@
     }
 
     #mediaGrid {
-      column-count: 3;
+      column-count: 4;
       column-gap: 0;
       max-width: none; /* make it span full width */
       margin: 0 auto;
@@ -80,6 +80,14 @@
   <div id="dateTooltip" class="mediaDateTooltip"></div>
 
 <script>
+    function reportHeight() {
+      const h = document.body.scrollHeight;
+      window.parent.postMessage(
+        { type: 'GRID_HEIGHT', height: h },
+        '*'  // or replace '*' with your Squarespace site’s exact origin
+      );
+    }
+
   //
   // 1) Fetch a fresh Dropbox token from our Netlify function
   //
@@ -334,7 +342,7 @@
         body: JSON.stringify({ path: entry.path_lower })
       });
       const { link: fileUrl } = await linkRes.json();
-
+reportHeight();  
       // 8.4.2) Create an <img> or <video> node
       const isVideo = /\.(mp4|mov)$/i.test(entry.name);
       const mediaElement = document.createElement(isVideo ? "video" : "img");
@@ -421,9 +429,13 @@
       }
     }
   });
-
   //
   // 11) Finally, kick everything off:
   //
   fetchDropboxMedia();
+  
+    // fire reportHeight once on load…
+    window.addEventListener('load', reportHeight);
+    // …and again if anything causes a relayout (e.g. images loading)
+    window.addEventListener('resize', reportHeight);
 </script>

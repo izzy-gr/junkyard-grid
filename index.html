@@ -325,6 +325,7 @@ async function listAllFiles(path) {
 
    // 8.1) Fetch & shuffle Images  (CHANGED: pagination + count constant)
 let imageEntries = await listAllFiles(IMAGE_FOLDER_PATH);
+    console.log(`Total images found: ${imageEntries.length}`);
 for (let i = imageEntries.length - 1; i > 0; i--) {
   const j = Math.floor(Math.random() * (i + 1));
   [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
@@ -333,6 +334,7 @@ imageEntries = imageEntries.slice(0, IMAGE_COUNT);
     
 // 8.2) Fetch & shuffle Videos  (CHANGED: pagination + count constant)
 let videoEntries = await listAllFiles(VIDEO_FOLDER_PATH);
+    console.log(`Total videos found: ${videoEntries.length}`);
 for (let i = videoEntries.length - 1; i > 0; i--) {
   const j = Math.floor(Math.random() * (i + 1));
   [videoEntries[i], videoEntries[j]] = [videoEntries[j], videoEntries[i]];

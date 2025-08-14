@@ -102,6 +102,9 @@
   //
   const IMAGE_FOLDER_PATH = "/Junkyard/Images";
   const VIDEO_FOLDER_PATH = "/Junkyard/Videos";
+  // NEW: choose how many to show
+  const IMAGE_COUNT = 11;
+  const VIDEO_COUNT = 1;
 
   // We’ll keep an array of each “<div class='mediaItem'>” wrapper:
   let mediaItems = [];
@@ -117,7 +120,6 @@
   dateTooltip.id = "dateTooltip";
   dateTooltip.className = "mediaDateTooltip";
   document.body.appendChild(dateTooltip);
-
 
   //
   // 3) Helper: format an ISO‐timestamp into “Mon D, YYYY”
@@ -279,6 +281,38 @@
   //    metadata fetching (for every file) so our “Date taken”
   //    tooltip can appear instantly when clicked.
   //
+
+  // NEW: helper to list every file in a folder (handles pagination via /continue)
+async function listAllFiles(path) {
+  const ACCESS_TOKEN = await getAccessToken();
+  const headers = {
+    Authorization: "Bearer " + ACCESS_TOKEN,
+    "Content-Type": "application/json"
+  };
+
+  // First page
+  let res = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ path }) // no subfolders in your case
+  });
+  let data = await res.json();
+  let entries = (data.entries || []).filter(e => e[".tag"] === "file");
+
+  // Follow the cursor while more results remain
+  while (data.has_more) {
+    res = await fetch("https://api.dropboxapi.com/2/files/list_folder/continue", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ cursor: data.cursor })
+    });
+    data = await res.json();
+    if (data.entries) entries.push(...data.entries.filter(e => e[".tag"] === "file"));
+  }
+
+  return entries;
+}
+  
   async function fetchDropboxMedia() {
     const ACCESS_TOKEN = await getAccessToken();
     const mediaGrid = document.getElementById("mediaGrid");
@@ -289,46 +323,28 @@
     currentFocusedIndex = null;
     dateTooltip.style.opacity = "0";
 
-    // 8.1) Fetch & shuffle Images
-    const imgRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + ACCESS_TOKEN,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ path: IMAGE_FOLDER_PATH })
-    });
-    let imageEntries = (await imgRes.json()).entries
-      .filter(e => e[".tag"] === "file");
-    for (let i = imageEntries.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
-    }
-    imageEntries = imageEntries.slice(0, 11);
-
-    // 8.2) Fetch & shuffle Videos
-    const vidRes  = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + ACCESS_TOKEN,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ path: VIDEO_FOLDER_PATH })
-    });
-    let videoEntries = (await vidRes.json()).entries
-      .filter(e => e[".tag"] === "file");
-    for (let i = videoEntries.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [videoEntries[i], videoEntries[j]] = [videoEntries[j], videoEntries[i]];
-    }
-    const [videoEntry] = videoEntries;
-
-    // 8.3) Mix them together & reshuffle
-    const allEntries = [...imageEntries, videoEntry];
-    for (let i = allEntries.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allEntries[i], allEntries[j]] = [allEntries[j], allEntries[i]];
-    }
+   // 8.1) Fetch & shuffle Images  (CHANGED: pagination + count constant)
+let imageEntries = await listAllFiles(IMAGE_FOLDER_PATH);
+for (let i = imageEntries.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [imageEntries[i], imageEntries[j]] = [imageEntries[j], imageEntries[i]];
+}
+imageEntries = imageEntries.slice(0, IMAGE_COUNT);
+    
+// 8.2) Fetch & shuffle Videos  (CHANGED: pagination + count constant)
+let videoEntries = await listAllFiles(VIDEO_FOLDER_PATH);
+for (let i = videoEntries.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [videoEntries[i], videoEntries[j]] = [videoEntries[j], videoEntries[i]];
+}
+const selectedVideos = videoEntries.slice(0, Math.max(0, VIDEO_COUNT));
+    
+// 8.3) Mix them together & reshuffle  (CHANGED: support VIDEO_COUNT)
+const allEntries = [...imageEntries, ...selectedVideos];
+for (let i = allEntries.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [allEntries[i], allEntries[j]] = [allEntries[j], allEntries[i]];
+}
 
     // 8.4) Iterate & create each <div class="mediaItem">…
     for (const entry of allEntries) {
@@ -342,7 +358,7 @@
         body: JSON.stringify({ path: entry.path_lower })
       });
       const { link: fileUrl } = await linkRes.json();
- 
+reportHeight();  
       // 8.4.2) Create an <img> or <video> node
       const isVideo = /\.(mp4|mov)$/i.test(entry.name);
       const mediaElement = document.createElement(isVideo ? "video" : "img");
@@ -355,7 +371,7 @@
         mediaElement.playsInline = true;
         mediaElement.controls    = false;
       }
-reportHeight();  
+
       // 8.4.3) Wrap it in <div class="mediaItem">
       const wrapper = document.createElement("div");
       wrapper.className = "mediaItem";
@@ -433,7 +449,6 @@ reportHeight();
   // 11) Finally, kick everything off:
   //
   fetchDropboxMedia();
-  
     // fire reportHeight once on load…
     window.addEventListener('load', reportHeight);
     // …and again if anything causes a relayout (e.g. images loading)
